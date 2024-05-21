@@ -1,0 +1,7 @@
+#* DIRECTORIES
+tmp
+
+#* FILES
+.env
+.env.*
+!.env.example
