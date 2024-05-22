@@ -1,20 +1,25 @@
 package models
 
+import "github.com/google/uuid"
+
 type User struct {
-	Id       string `json:"id"`
-	Username string `json:"username"`
-	Name     string `json:"name"`
+	Id       uuid.UUID `json:"id"`
+	Username string    `json:"username"`
+	Name     string    `json:"name"`
+	Email    string    `json:"email"`
+	Phone    string    `json:"phone"`
 }
 
-type UserSecret struct {
-	Id       string `json:"id"`
+type UserRegister struct {
 	Username string `json:"username"`
-	Password string `json:"password"`
 	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Phone    string `json:"phone"`
+	Password string `json:"password"`
 }
-
-type UserInput struct {
+type UserUpdate struct {
 	Username string `json:"username"`
-	Password string `json:"password"`
 	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Phone    string `json:"phone"`
 }

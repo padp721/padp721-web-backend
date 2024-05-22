@@ -5,13 +5,13 @@ import (
 	"os"
 )
 
-func GeneratePasswordString(password string, username string, name string) string {
+func GeneratePasswordString(password string, username string, id string) string {
 	bcryptSalt := os.Getenv("BCRYPT_SALT")
 	passwordString := fmt.Sprintf(
 		"%v:%v:%v:%v",
 		password,
 		username,
-		name,
+		id,
 		bcryptSalt,
 	)
 

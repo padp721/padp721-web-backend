@@ -27,9 +27,10 @@ func AuthLogin(c *fiber.Ctx) error {
 		})
 	}
 
-	var user models.UserSecret
-	sql := "SELECT id, username, password, name FROM public.users WHERE username=$1"
-	err := db.QueryRow(c.Context(), sql, auth.Username).Scan(&user.Id, &user.Username, &user.Password, &user.Name)
+	//* FIND USERNAME
+	var user models.User
+	sql := "SELECT id, username, name, email, phone FROM public.users WHERE username=$1"
+	err := db.QueryRow(c.Context(), sql, auth.Username).Scan(&user.Id, &user.Username, &user.Name, &user.Email, &user.Phone)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return c.Status(fiber.StatusUnauthorized).JSON(models.Response{
@@ -42,13 +43,24 @@ func AuthLogin(c *fiber.Ctx) error {
 		})
 	}
 
-	passwordString := utilities.GeneratePasswordString(
-		auth.Password,
-		user.Username,
-		user.Name,
-	)
+	//* FIND PASSWORD BY USER_ID
+	var dbPassword string
+	sql = "SELECT password FROM secret.users WHERE user_id=$1"
+	err = db.QueryRow(c.Context(), sql, user.Id).Scan(&dbPassword)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return c.Status(fiber.StatusUnauthorized).JSON(models.Response{
+				Message: "User ini tidak memiliki password!",
+			})
+		}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(passwordString))
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: err.Error(),
+		})
+	}
+
+	inputPassword := utilities.GeneratePasswordString(auth.Password, user.Username, user.Id.String())
+	err = bcrypt.CompareHashAndPassword([]byte(dbPassword), []byte(inputPassword))
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(models.Response{
 			Message: "Password Salah!",

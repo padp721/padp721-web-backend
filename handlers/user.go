@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/padp721/padp721-web-backend/models"
@@ -17,19 +18,25 @@ func UserCreate(c *fiber.Ctx) error {
 		})
 	}
 
-	var user models.UserInput
-	if err := c.BodyParser(&user); err != nil {
+	var newUser models.UserRegister
+	if err := c.BodyParser(&newUser); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
 			Message: err.Error(),
 		})
 	}
 
-	passwordString := utilities.GeneratePasswordString(
-		user.Password,
-		user.Username,
-		user.Name,
-	)
+	//* BEGIN TRANSACTION
+	dbTx, err := db.Begin(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: err.Error(),
+		})
+	}
+	defer dbTx.Rollback(c.Context())
 
+	id := uuid.New()
+
+	passwordString := utilities.GeneratePasswordString(newUser.Password, newUser.Username, id.String())
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(passwordString), bcrypt.DefaultCost)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
@@ -37,8 +44,24 @@ func UserCreate(c *fiber.Ctx) error {
 		})
 	}
 
-	sql := "INSERT INTO public.users(username, password, name) VALUES($1, $2, $3)"
-	_, err = db.Exec(c.Context(), sql, user.Username, string(hashedPassword), user.Name)
+	sql := "INSERT INTO public.users(id, username, name, email, phone) VALUES($1, $2, $3, $4, $5)"
+	_, err = dbTx.Exec(c.Context(), sql, id, newUser.Username, newUser.Name, newUser.Email, newUser.Phone)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: err.Error(),
+		})
+	}
+
+	sql = "INSERT INTO secret.users(user_id, password) VALUES($1, $2)"
+	_, err = dbTx.Exec(c.Context(), sql, id, string(hashedPassword))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: err.Error(),
+		})
+	}
+
+	//* COMMIT TRANSACTION
+	err = dbTx.Commit(c.Context())
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
 			Message: err.Error(),
@@ -58,7 +81,7 @@ func UsersGet(c *fiber.Ctx) error {
 		})
 	}
 
-	sql := "SELECT id, name, username FROM public.users"
+	sql := "SELECT id, username, name, email, phone FROM public.users"
 	rows, err := db.Query(c.Context(), sql)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
@@ -70,7 +93,7 @@ func UsersGet(c *fiber.Ctx) error {
 	var users []models.User
 	for rows.Next() {
 		var user models.User
-		if err := rows.Scan(&user.Id, &user.Name, &user.Username); err != nil {
+		if err := rows.Scan(&user.Id, &user.Username, &user.Name, &user.Email, &user.Phone); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
 				Message: err.Error(),
 			})
@@ -95,8 +118,8 @@ func UserGet(c *fiber.Ctx) error {
 	id := c.Params("id")
 
 	var user models.User
-	sql := "SELECT id, name, username FROM public.users WHERE id=$1"
-	err := db.QueryRow(c.Context(), sql, id).Scan(&user.Id, &user.Name, &user.Username)
+	sql := "SELECT id, username, name, email, phone FROM public.users WHERE id=$1"
+	err := db.QueryRow(c.Context(), sql, id).Scan(&user.Id, &user.Username, &user.Name, &user.Email, &user.Phone)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return c.Status(fiber.StatusNotFound).JSON(models.Response{
@@ -111,5 +134,115 @@ func UserGet(c *fiber.Ctx) error {
 	return c.JSON(models.ResponseData{
 		Message: "Data fetch success!",
 		Data:    user,
+	})
+}
+
+func UserUpdate(c *fiber.Ctx) error {
+	db, ok := c.Locals("db").(*pgxpool.Pool)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: "Database connection not available!",
+		})
+	}
+
+	var updatedUser models.UserUpdate
+	if err := c.BodyParser(&updatedUser); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
+			Message: err.Error(),
+		})
+	}
+
+	id := c.Params("id")
+	sql := "UPDATE public.users SET username=$1, name=$2, email=$3, phone=$4 WHERE id=$5"
+	commandTag, err := db.Exec(c.Context(), sql, updatedUser.Username, updatedUser.Name, updatedUser.Email, updatedUser.Phone, id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: err.Error(),
+		})
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
+			Message: "User not found!",
+		})
+	}
+
+	return c.JSON(models.Response{
+		Message: "User Updated!",
+	})
+}
+
+func UserDelete(c *fiber.Ctx) error {
+	db, ok := c.Locals("db").(*pgxpool.Pool)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: "Database connection not available!",
+		})
+	}
+
+	//* BEGIN TRANSACTION
+	dbTx, err := db.Begin(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: err.Error(),
+		})
+	}
+	defer dbTx.Rollback(c.Context())
+
+	var userCount int
+	sql := "SELECT COUNT(id) FROM public.users"
+	err = dbTx.QueryRow(c.Context(), sql).Scan(&userCount)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: err.Error(),
+		})
+	}
+
+	if userCount <= 1 {
+		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
+			Message: "You can't delete more user. This is the last user available.",
+		})
+	}
+
+	id := c.Params("id")
+
+	sql = "DELETE FROM secret.users WHERE user_id=$1"
+	commandTag, err := dbTx.Exec(c.Context(), sql, id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: err.Error(),
+		})
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(models.Response{
+			Message: "User not found!",
+		})
+	}
+
+	sql = "DELETE FROM public.users WHERE id=$1"
+	commandTag, err = dbTx.Exec(c.Context(), sql, id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: err.Error(),
+		})
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(models.Response{
+			Message: "User not found!",
+		})
+	}
+
+	//* COMMIT TRANSACTION
+	err = dbTx.Commit(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: err.Error(),
+		})
+	}
+
+	return c.JSON(models.Response{
+		Message: "User Deleted.",
 	})
 }

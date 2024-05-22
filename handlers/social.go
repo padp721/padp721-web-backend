@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/padp721/padp721-web-backend/models"
@@ -91,8 +92,8 @@ func SocialCreate(c *fiber.Ctx) error {
 		})
 	}
 
-	sql := "INSERT INTO public.socials(name, url, color, icon_type, icon) VALUES($1, $2, $3, $4, $5)"
-	_, err := db.Exec(c.Context(), sql, social.Name, social.Url, social.Color, social.IconType, social.Icon)
+	sql := "INSERT INTO public.socials(id, name, url, color, icon_type, icon) VALUES($1, $2, $3, $4, $5, $6)"
+	_, err := db.Exec(c.Context(), sql, uuid.New(), social.Name, social.Url, social.Color, social.IconType, social.Icon)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
 			Message: err.Error(),

@@ -8,9 +8,9 @@ import (
 func SetupUserRoutes(parentRoute fiber.Router) {
 	userRoutes := parentRoute.Group("/user")
 
-	// userRoutes.Get("/")
-	// userRoutes.Get("/:id")
+	userRoutes.Get("/", handlers.UsersGet)
+	userRoutes.Get("/:id", handlers.UserGet)
 	userRoutes.Post("/", handlers.UserCreate)
-	// userRoutes.Put("/:id")
-	// userRoutes.Delete("/:id")
+	userRoutes.Put("/:id", handlers.UserUpdate)
+	userRoutes.Delete("/:id", handlers.UserDelete)
 }
