@@ -24,7 +24,7 @@ func init() {
 		log.Println("Loading from .env file...")
 		err := godotenv.Load()
 		if err != nil {
-			log.Fatalf("Error loading .env file: %v", err)
+			log.Fatal(err.Error())
 		}
 	} else {
 		log.Println("App Running in Production Mode.")
@@ -33,8 +33,7 @@ func init() {
 
 func main() {
 	App := fiber.New(fiber.Config{
-		AppName:           os.Getenv("APP_NAME"),
-		EnablePrintRoutes: devMode,
+		AppName: os.Getenv("APP_NAME"),
 	})
 	DbPool := db.Connect()
 	defer DbPool.Close()

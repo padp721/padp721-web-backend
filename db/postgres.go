@@ -21,12 +21,12 @@ func Connect() *pgxpool.Pool {
 
 	config, err := pgxpool.ParseConfig(connString)
 	if err != nil {
-		log.Fatalf("Error parsing database config: %v", err)
+		log.Fatal(err.Error())
 	}
 
 	dbPool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
-		log.Fatalf("Error connecting to database: %v", err)
+		log.Fatal(err.Error())
 	}
 
 	var pgVersion string
