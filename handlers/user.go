@@ -36,7 +36,7 @@ func UserCreate(c *fiber.Ctx) error {
 
 	id := uuid.New()
 
-	passwordString := utilities.GeneratePasswordString(newUser.Password, newUser.Username, id.String())
+	passwordString := utilities.GeneratePasswordString(newUser.Password, newUser.Username)
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(passwordString), bcrypt.DefaultCost)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{

@@ -23,7 +23,7 @@ func AuthLogin(c *fiber.Ctx) error {
 	var auth models.Auth
 	if err := c.BodyParser(&auth); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
-			Message: err.Error(),
+			Message: fmt.Sprintf("Error parsing request body: %v", err),
 		})
 	}
 
@@ -59,7 +59,7 @@ func AuthLogin(c *fiber.Ctx) error {
 		})
 	}
 
-	inputPassword := utilities.GeneratePasswordString(auth.Password, user.Username, user.Id.String())
+	inputPassword := utilities.GeneratePasswordString(auth.Password, user.Username)
 	err = bcrypt.CompareHashAndPassword([]byte(dbPassword), []byte(inputPassword))
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(models.Response{

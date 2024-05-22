@@ -66,7 +66,10 @@ func main() {
 	if devMode {
 		App.Use(logger.New())
 	}
-	App.Use(cors.New())
+	App.Use(cors.New(cors.Config{
+		AllowOrigins:     os.Getenv("CORS_ALLOWED_ORIGIN"),
+		AllowCredentials: true,
+	}))
 	App.Use(func(c *fiber.Ctx) error {
 		c.Locals("db", dbPool)
 		c.Locals("privateKey", privateKey)

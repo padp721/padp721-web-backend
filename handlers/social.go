@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"fmt"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -11,9 +9,6 @@ import (
 )
 
 func SocialsGet(c *fiber.Ctx) error {
-	username, _ := c.Locals("username").(string)
-	fmt.Println(username)
-
 	db, ok := c.Locals("db").(*pgxpool.Pool)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
