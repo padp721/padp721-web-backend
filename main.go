@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/padp721/padp721-web-backend/db"
 	"github.com/padp721/padp721-web-backend/handlers"
@@ -19,8 +20,10 @@ import (
 )
 
 var (
+	err        error
 	devMode    bool
 	privateKey *rsa.PrivateKey
+	dbPool     *pgxpool.Pool
 )
 
 // * LOAD ENV VARIABLES
@@ -38,24 +41,34 @@ func init() {
 	}
 }
 
+// * CREATE DB POOL
+func init() {
+	dbPool, err = db.CreatePool()
+	if err != nil {
+		log.Fatalf("Failed to Create database Pool: %v", err)
+	}
+}
+
 // * LOAD PRIVATE KEY FOR JWT
 func init() {
-	privateKey = utilities.LoadPrivateKey("./keys/id_rsa")
+	privateKey, err = utilities.LoadPrivateKey("./keys/id_rsa")
+	if err != nil {
+		log.Fatalf("Failed to load RPivate Key file: %v", err)
+	}
 }
 
 func main() {
+	defer dbPool.Close()
 	App := fiber.New(fiber.Config{
 		AppName: os.Getenv("APP_NAME"),
 	})
-	DbPool := db.Connect()
-	defer DbPool.Close()
 
 	if devMode {
 		App.Use(logger.New())
 	}
 	App.Use(cors.New())
 	App.Use(func(c *fiber.Ctx) error {
-		c.Locals("db", DbPool)
+		c.Locals("db", dbPool)
 		c.Locals("privateKey", privateKey)
 		return c.Next()
 	})
@@ -78,7 +91,5 @@ func main() {
 	frontOffice.Get("/socials", handlers.SocialsGet)
 
 	//* SERVE APP
-	APP_HOST := os.Getenv("APP_HOST")
-	APP_PORT := os.Getenv("APP_PORT")
-	log.Fatal(App.Listen(fmt.Sprintf("%v:%v", APP_HOST, APP_PORT)))
+	log.Fatal(App.Listen(fmt.Sprintf("%v:%v", os.Getenv("APP_HOST"), os.Getenv("APP_PORT"))))
 }
