@@ -1,13 +1,18 @@
 package handlers
 
 import (
+	"fmt"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/padp721/padp721-web-backend/models"
 )
 
-func GetSocials(c *fiber.Ctx) error {
+func SocialsGet(c *fiber.Ctx) error {
+	username, _ := c.Locals("username").(string)
+	fmt.Println(username)
+
 	db, ok := c.Locals("db").(*pgxpool.Pool)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
@@ -15,7 +20,7 @@ func GetSocials(c *fiber.Ctx) error {
 		})
 	}
 
-	sql := "SELECT name, url, color, icon_type, icon FROM public.socials"
+	sql := "SELECT id, name, url, color, icon_type, icon FROM public.socials"
 	rows, err := db.Query(c.Context(), sql)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
@@ -27,7 +32,7 @@ func GetSocials(c *fiber.Ctx) error {
 	var socials []models.Social
 	for rows.Next() {
 		var social models.Social
-		if err := rows.Scan(&social.Name, &social.Url, &social.Color, &social.IconType, &social.Icon); err != nil {
+		if err := rows.Scan(&social.Id, &social.Name, &social.Url, &social.Color, &social.IconType, &social.Icon); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
 				Message: err.Error(),
 			})
@@ -41,7 +46,7 @@ func GetSocials(c *fiber.Ctx) error {
 	})
 }
 
-func GetSocial(c *fiber.Ctx) error {
+func SocialGet(c *fiber.Ctx) error {
 	db, ok := c.Locals("db").(*pgxpool.Pool)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
@@ -52,8 +57,8 @@ func GetSocial(c *fiber.Ctx) error {
 	id := c.Params("id")
 
 	var social models.Social
-	sql := "SELECT name, url, color, icon_type, icon FROM public.socials WHERE id=$1"
-	err := db.QueryRow(c.Context(), sql, id).Scan(&social.Name, &social.Url, &social.Color, &social.IconType, &social.Icon)
+	sql := "SELECT id, name, url, color, icon_type, icon FROM public.socials WHERE id=$1"
+	err := db.QueryRow(c.Context(), sql, id).Scan(&social.Id, &social.Name, &social.Url, &social.Color, &social.IconType, &social.Icon)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return c.Status(fiber.StatusNotFound).JSON(models.Response{
@@ -71,7 +76,7 @@ func GetSocial(c *fiber.Ctx) error {
 	})
 }
 
-func CreateSocial(c *fiber.Ctx) error {
+func SocialCreate(c *fiber.Ctx) error {
 	db, ok := c.Locals("db").(*pgxpool.Pool)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
@@ -79,7 +84,7 @@ func CreateSocial(c *fiber.Ctx) error {
 		})
 	}
 
-	var social models.Social
+	var social models.SocialInput
 	if err := c.BodyParser(&social); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
 			Message: err.Error(),
@@ -99,7 +104,7 @@ func CreateSocial(c *fiber.Ctx) error {
 	})
 }
 
-func UpdateSocial(c *fiber.Ctx) error {
+func SocialUpdate(c *fiber.Ctx) error {
 	db, ok := c.Locals("db").(*pgxpool.Pool)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
@@ -107,7 +112,7 @@ func UpdateSocial(c *fiber.Ctx) error {
 		})
 	}
 
-	var social models.Social
+	var social models.SocialInput
 	if err := c.BodyParser(&social); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
 			Message: err.Error(),
@@ -135,7 +140,7 @@ func UpdateSocial(c *fiber.Ctx) error {
 	})
 }
 
-func DeleteSocial(c *fiber.Ctx) error {
+func SocialDelete(c *fiber.Ctx) error {
 	db, ok := c.Locals("db").(*pgxpool.Pool)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{

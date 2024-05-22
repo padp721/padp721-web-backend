@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rsa"
 	"fmt"
 	"log"
 	"os"
@@ -11,10 +12,16 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
 	"github.com/padp721/padp721-web-backend/db"
+	"github.com/padp721/padp721-web-backend/handlers"
+	"github.com/padp721/padp721-web-backend/middlewares"
 	"github.com/padp721/padp721-web-backend/routes"
+	"github.com/padp721/padp721-web-backend/utilities"
 )
 
-var devMode bool
+var (
+	devMode    bool
+	privateKey *rsa.PrivateKey
+)
 
 // * LOAD ENV VARIABLES
 func init() {
@@ -31,6 +38,11 @@ func init() {
 	}
 }
 
+// * LOAD PRIVATE KEY FOR JWT
+func init() {
+	privateKey = utilities.LoadPrivateKey("./keys/id_rsa")
+}
+
 func main() {
 	App := fiber.New(fiber.Config{
 		AppName: os.Getenv("APP_NAME"),
@@ -44,6 +56,7 @@ func main() {
 	App.Use(cors.New())
 	App.Use(func(c *fiber.Ctx) error {
 		c.Locals("db", DbPool)
+		c.Locals("privateKey", privateKey)
 		return c.Next()
 	})
 
@@ -51,9 +64,20 @@ func main() {
 		return c.JSON(fiber.Map{"Hello": "World!"})
 	})
 
-	api := App.Group("/api")
-	routes.SetupSocialRoutes(api)
+	//* SETUP AUTH ROUTES
+	routes.SetupAuthRoutes(App)
 
+	//* SETUP BACKOFFICE ROUTES
+	backOffice := App.Group("/b")
+	backOffice.Use(middlewares.JwtMiddleware)
+	routes.SetupUserRoutes(backOffice)
+	routes.SetupSocialRoutes(backOffice)
+
+	//* SETUP FRONTOFFICE ROUTES
+	frontOffice := App.Group("/f")
+	frontOffice.Get("/socials", handlers.SocialsGet)
+
+	//* SERVE APP
 	APP_HOST := os.Getenv("APP_HOST")
 	APP_PORT := os.Getenv("APP_PORT")
 	log.Fatal(App.Listen(fmt.Sprintf("%v:%v", APP_HOST, APP_PORT)))
