@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -244,5 +247,104 @@ func UserDelete(c *fiber.Ctx) error {
 
 	return c.JSON(models.Response{
 		Message: "User Deleted.",
+	})
+}
+
+func UserChangePassword(c *fiber.Ctx) error {
+	db, ok := c.Locals("db").(*pgxpool.Pool)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: "Database connection not available!",
+		})
+	}
+
+	var inputPassword models.UserChangePassword
+	if err := c.BodyParser(&inputPassword); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
+			Message: fmt.Sprintf("Error parsing request body: %v", err),
+		})
+	}
+
+	//* CHECK IF BOTH NEW PASSWORD FIELD IS EQUAL
+	if inputPassword.NewPassword != inputPassword.ReNewPassword {
+		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
+			Message: "Make sure new password in both inputs are equal!",
+		})
+	}
+
+	userId := c.Locals("userId").(string)
+
+	var (
+		username                string
+		hashedOldPasswordString string
+	)
+
+	sql := `
+		SELECT a.username, b.password
+		FROM public.users AS a
+		INNER JOIN secret.users AS b ON a.id = b.user_id
+		WHERE a.id=$1
+	`
+	err := db.QueryRow(c.Context(), sql, userId).Scan(&username, &hashedOldPasswordString)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return c.Status(fiber.StatusNotFound).JSON(models.Response{
+				Message: "User tidak ditemukan!",
+			})
+		}
+
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: fmt.Sprintf("Error getting user data: %v", err),
+		})
+	}
+
+	newPasswordString := utilities.GeneratePasswordString(inputPassword.NewPassword, username)
+	oldPasswordString := utilities.GeneratePasswordString(inputPassword.OldPassword, username)
+
+	//* CHECK IF OLD PASSWORD INPUT IS SAME AS OLD PASSWORD DB
+	err = bcrypt.CompareHashAndPassword([]byte(hashedOldPasswordString), []byte(oldPasswordString))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
+			Message: "Old password is wrong.",
+		})
+	}
+
+	//* CHECK IF NEW PASSWORD IS SAME AS OLD PASSWORD
+	err = bcrypt.CompareHashAndPassword([]byte(hashedOldPasswordString), []byte(newPasswordString))
+	if err == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
+			Message: "New password is the same as old password!",
+		})
+	}
+
+	hashedNewPassword, err := bcrypt.GenerateFromPassword([]byte(newPasswordString), bcrypt.DefaultCost)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: err.Error(),
+		})
+	}
+
+	sql = "UPDATE secret.users SET password=$1 WHERE user_id=$2"
+	commandTag, err := db.Exec(c.Context(), sql, string(hashedNewPassword), userId)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: fmt.Sprintf("Error updating password to database: %v", err),
+		})
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
+			Message: "User not found!",
+		})
+	}
+
+	c.Cookie(&fiber.Cookie{
+		Name:    "jwt",
+		Value:   "",
+		Expires: time.Now().Add(-time.Hour),
+	})
+
+	return c.JSON(models.Response{
+		Message: "Password changed. You need to re-login to app.",
 	})
 }

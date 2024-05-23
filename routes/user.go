@@ -13,4 +13,5 @@ func SetupUserRoutes(parentRoute fiber.Router) {
 	userRoutes.Post("/", handlers.UserCreate)
 	userRoutes.Put("/:id", handlers.UserUpdate)
 	userRoutes.Delete("/:id", handlers.UserDelete)
+	userRoutes.Patch("/change-password", handlers.UserChangePassword)
 }

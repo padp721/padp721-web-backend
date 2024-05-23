@@ -6,12 +6,11 @@ import (
 )
 
 func GeneratePasswordString(password string, username string) string {
-	bcryptSalt := os.Getenv("BCRYPT_SALT")
 	passwordString := fmt.Sprintf(
 		"%v:%v:%v",
 		password,
 		username,
-		bcryptSalt,
+		os.Getenv("BCRYPT_SALT"),
 	)
 
 	return passwordString

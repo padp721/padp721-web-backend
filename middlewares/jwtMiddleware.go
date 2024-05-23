@@ -38,7 +38,7 @@ func JwtMiddleware(c *fiber.Ctx) error {
 		})
 	}
 
-	c.Locals("username", subject)
+	c.Locals("userId", subject)
 
 	return c.Next()
 }

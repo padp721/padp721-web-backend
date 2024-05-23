@@ -3,8 +3,10 @@ package handlers
 import (
 	"crypto/rsa"
 	"fmt"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/padp721/padp721-web-backend/models"
@@ -27,10 +29,19 @@ func AuthLogin(c *fiber.Ctx) error {
 		})
 	}
 
-	//* FIND USERNAME
-	var user models.User
-	sql := "SELECT id, username, name, email, phone FROM public.users WHERE username=$1"
-	err := db.QueryRow(c.Context(), sql, auth.Username).Scan(&user.Id, &user.Username, &user.Name, &user.Email, &user.Phone)
+	//* FIND USER
+	var (
+		userId     uuid.UUID
+		username   string
+		dbPassword string
+	)
+	sql := `
+		SELECT a.id, a.username, b.password 
+		FROM public.users AS a
+		INNER JOIN secret.users AS b ON a.id = b.user_id
+		WHERE username=$1
+	`
+	err := db.QueryRow(c.Context(), sql, auth.Username).Scan(&userId, &username, &dbPassword)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return c.Status(fiber.StatusUnauthorized).JSON(models.Response{
@@ -39,41 +50,27 @@ func AuthLogin(c *fiber.Ctx) error {
 		}
 
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
-			Message: err.Error(),
+			Message: fmt.Sprintf("Error getting user data from database: %v", err),
 		})
 	}
 
-	//* FIND PASSWORD BY USER_ID
-	var dbPassword string
-	sql = "SELECT password FROM secret.users WHERE user_id=$1"
-	err = db.QueryRow(c.Context(), sql, user.Id).Scan(&dbPassword)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return c.Status(fiber.StatusUnauthorized).JSON(models.Response{
-				Message: "User ini tidak memiliki password!",
-			})
-		}
-
-		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
-			Message: err.Error(),
-		})
-	}
-
-	inputPassword := utilities.GeneratePasswordString(auth.Password, user.Username)
+	//* VERIFY PASSWORD
+	inputPassword := utilities.GeneratePasswordString(auth.Password, username)
 	err = bcrypt.CompareHashAndPassword([]byte(dbPassword), []byte(inputPassword))
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(models.Response{
-			Message: "Password Salah!",
+			Message: "Wrong Password!",
 		})
 	}
 
+	//* GENERATE JWT TOKEN
 	privateKey, ok := c.Locals("privateKey").(*rsa.PrivateKey)
 	if !ok {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
 			Message: "Private key for Signing JWT is not loaded.",
 		})
 	}
-	jwtTokenString, jwtExpire, err := utilities.GenerateJWT(privateKey, user.Username)
+	jwtTokenString, jwtExpire, err := utilities.GenerateJWT(privateKey, userId)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
 			Message: fmt.Sprintf("Failed to create JWT Token: %v", err),
@@ -87,6 +84,18 @@ func AuthLogin(c *fiber.Ctx) error {
 	})
 
 	return c.JSON(models.Response{
-		Message: "Berhasil Login.",
+		Message: "Login Success.",
+	})
+}
+
+func AuthLogout(c *fiber.Ctx) error {
+	c.Cookie(&fiber.Cookie{
+		Name:    "jwt",
+		Value:   "",
+		Expires: time.Now().Add(-time.Hour),
+	})
+
+	return c.JSON(models.Response{
+		Message: "Logged out!",
 	})
 }

@@ -9,13 +9,13 @@ import (
 	"github.com/google/uuid"
 )
 
-func GenerateJWT(privateKey *rsa.PrivateKey, username string) (string, time.Time, error) {
+func GenerateJWT(privateKey *rsa.PrivateKey, userId uuid.UUID) (string, time.Time, error) {
 	now := time.Now()
 	expires := now.Add(24 * time.Hour)
 
 	jwtClaims := jwt.MapClaims{
 		"iss": "admin",
-		"sub": username,
+		"sub": userId.String(),
 		"aud": "users",
 		"exp": expires.Unix(),
 		"nbf": now.Unix(),

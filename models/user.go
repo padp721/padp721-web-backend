@@ -17,9 +17,16 @@ type UserRegister struct {
 	Phone    string `json:"phone"`
 	Password string `json:"password"`
 }
+
 type UserUpdate struct {
 	Username string `json:"username"`
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	Phone    string `json:"phone"`
+}
+
+type UserChangePassword struct {
+	NewPassword   string `json:"new_password"`
+	ReNewPassword string `json:"re_new_password"`
+	OldPassword   string `json:"old_password"`
 }
