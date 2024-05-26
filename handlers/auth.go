@@ -3,7 +3,6 @@ package handlers
 import (
 	"crypto/rsa"
 	"fmt"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -70,32 +69,17 @@ func AuthLogin(c *fiber.Ctx) error {
 			Message: "Private key for Signing JWT is not loaded.",
 		})
 	}
-	jwtTokenString, jwtExpire, err := utilities.GenerateJWT(privateKey, userId)
+	jwtTokenString, _, err := utilities.GenerateJWT(privateKey, userId)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
 			Message: fmt.Sprintf("Failed to create JWT Token: %v", err),
 		})
 	}
 
-	c.Cookie(&fiber.Cookie{
-		Name:    "jwt",
-		Value:   jwtTokenString,
-		Expires: jwtExpire,
-	})
-
-	return c.JSON(models.Response{
+	return c.JSON(models.ResponseData{
 		Message: "Login Success.",
-	})
-}
-
-func AuthLogout(c *fiber.Ctx) error {
-	c.Cookie(&fiber.Cookie{
-		Name:    "jwt",
-		Value:   "",
-		Expires: time.Now().Add(-time.Hour),
-	})
-
-	return c.JSON(models.Response{
-		Message: "Logged out!",
+		Data: fiber.Map{
+			"token": jwtTokenString,
+		},
 	})
 }

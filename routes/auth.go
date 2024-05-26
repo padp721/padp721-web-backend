@@ -9,5 +9,4 @@ func SetupAuthRoutes(app *fiber.App) {
 	authRoutes := app.Group("/auth")
 
 	authRoutes.Post("/login", handlers.AuthLogin)
-	authRoutes.Get("/logout", handlers.AuthLogout)
 }

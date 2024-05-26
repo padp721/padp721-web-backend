@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -337,12 +336,6 @@ func UserChangePassword(c *fiber.Ctx) error {
 			Message: "User not found!",
 		})
 	}
-
-	c.Cookie(&fiber.Cookie{
-		Name:    "jwt",
-		Value:   "",
-		Expires: time.Now().Add(-time.Hour),
-	})
 
 	return c.JSON(models.Response{
 		Message: "Password changed. You need to re-login to app.",

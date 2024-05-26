@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/keyauth"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -80,12 +81,17 @@ func main() {
 		return c.JSON(fiber.Map{"Hello": "World!"})
 	})
 
+	keyAuthConfig := keyauth.Config{
+		Validator:    middlewares.JwtMiddleware,
+		ErrorHandler: middlewares.JwtOnFailure,
+	}
+
 	//* SETUP AUTH ROUTES
 	routes.SetupAuthRoutes(App)
 
 	//* SETUP BACKOFFICE ROUTES
 	backOffice := App.Group("/b")
-	backOffice.Use(middlewares.JwtMiddleware)
+	backOffice.Use(keyauth.New(keyAuthConfig))
 	routes.SetupUserRoutes(backOffice)
 	routes.SetupSocialRoutes(backOffice)
 
