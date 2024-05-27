@@ -68,8 +68,7 @@ func main() {
 		App.Use(logger.New())
 	}
 	App.Use(cors.New(cors.Config{
-		AllowOrigins:     os.Getenv("CORS_ALLOWED_ORIGIN"),
-		AllowCredentials: true,
+		AllowOrigins: os.Getenv("CORS_ALLOWED_ORIGIN"),
 	}))
 	App.Use(func(c *fiber.Ctx) error {
 		c.Locals("db", dbPool)
