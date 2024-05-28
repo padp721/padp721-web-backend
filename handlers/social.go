@@ -25,7 +25,7 @@ func SocialsGet(c *fiber.Ctx) error {
 	}
 	defer rows.Close()
 
-	var socials []models.Social
+	socials := []models.Social{}
 	for rows.Next() {
 		var social models.Social
 		if err := rows.Scan(&social.Id, &social.Name, &social.Url, &social.Color, &social.IconType, &social.Icon); err != nil {

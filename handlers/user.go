@@ -92,7 +92,7 @@ func UsersGet(c *fiber.Ctx) error {
 	}
 	defer rows.Close()
 
-	var users []models.User
+	users := []models.User{}
 	for rows.Next() {
 		var user models.User
 		if err := rows.Scan(&user.Id, &user.Username, &user.Name, &user.Email, &user.Phone); err != nil {
