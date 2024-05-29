@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"fmt"
+
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -16,7 +19,7 @@ func SocialsGet(c *fiber.Ctx) error {
 		})
 	}
 
-	sql := "SELECT id, name, url, color, icon_type, icon FROM public.socials"
+	sql := "SELECT id, name, url, color, icon_type, icon FROM public.socials ORDER BY created_at DESC"
 	rows, err := db.Query(c.Context(), sql)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
@@ -87,6 +90,19 @@ func SocialCreate(c *fiber.Ctx) error {
 		})
 	}
 
+	validate, ok := c.Locals("validator").(*validator.Validate)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: "Validator not found!",
+		})
+	}
+
+	if err := validate.Struct(social); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
+			Message: fmt.Sprintf("Validation error: %v", err),
+		})
+	}
+
 	sql := "INSERT INTO public.socials(id, name, url, color, icon_type, icon) VALUES($1, $2, $3, $4, $5, $6)"
 	_, err := db.Exec(c.Context(), sql, uuid.New(), social.Name, social.Url, social.Color, social.IconType, social.Icon)
 	if err != nil {
@@ -112,6 +128,19 @@ func SocialUpdate(c *fiber.Ctx) error {
 	if err := c.BodyParser(&social); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
 			Message: err.Error(),
+		})
+	}
+
+	validate, ok := c.Locals("validator").(*validator.Validate)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: "Validator not found!",
+		})
+	}
+
+	if err := validate.Struct(social); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
+			Message: fmt.Sprintf("Validation error: %v", err),
 		})
 	}
 

@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -24,6 +25,19 @@ func UserCreate(c *fiber.Ctx) error {
 	if err := c.BodyParser(&newUser); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
 			Message: err.Error(),
+		})
+	}
+
+	validate, ok := c.Locals("validator").(*validator.Validate)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: "Validator not found!",
+		})
+	}
+
+	if err := validate.Struct(newUser); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
+			Message: fmt.Sprintf("Validation error: %v", err),
 		})
 	}
 
@@ -83,7 +97,7 @@ func UsersGet(c *fiber.Ctx) error {
 		})
 	}
 
-	sql := "SELECT id, username, name, email, phone FROM public.users"
+	sql := "SELECT id, username, name, email, phone FROM public.users ORDER BY created_at DESC"
 	rows, err := db.Query(c.Context(), sql)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
@@ -151,6 +165,19 @@ func UserUpdate(c *fiber.Ctx) error {
 	if err := c.BodyParser(&updatedUser); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
 			Message: err.Error(),
+		})
+	}
+
+	validate, ok := c.Locals("validator").(*validator.Validate)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: "Validator not found!",
+		})
+	}
+
+	if err := validate.Struct(updatedUser); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
+			Message: fmt.Sprintf("Validation error: %v", err),
 		})
 	}
 
@@ -261,6 +288,19 @@ func UserChangePassword(c *fiber.Ctx) error {
 	if err := c.BodyParser(&inputPassword); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
 			Message: fmt.Sprintf("Error parsing request body: %v", err),
+		})
+	}
+
+	validate, ok := c.Locals("validator").(*validator.Validate)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: "Validator not found!",
+		})
+	}
+
+	if err := validate.Struct(inputPassword); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
+			Message: fmt.Sprintf("Validation error: %v", err),
 		})
 	}
 

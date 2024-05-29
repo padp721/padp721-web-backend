@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/keyauth"
@@ -25,6 +26,7 @@ var (
 	devMode    bool
 	privateKey *rsa.PrivateKey
 	dbPool     *pgxpool.Pool
+	validate   *validator.Validate
 )
 
 // * LOAD ENV VARIABLES
@@ -58,6 +60,11 @@ func init() {
 	}
 }
 
+// * INIT VALIDATOR
+func init() {
+	validate = validator.New()
+}
+
 func main() {
 	defer dbPool.Close()
 	App := fiber.New(fiber.Config{
@@ -73,6 +80,7 @@ func main() {
 	App.Use(func(c *fiber.Ctx) error {
 		c.Locals("db", dbPool)
 		c.Locals("privateKey", privateKey)
+		c.Locals("validator", validate)
 		return c.Next()
 	})
 

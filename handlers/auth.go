@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"fmt"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -25,6 +26,19 @@ func AuthLogin(c *fiber.Ctx) error {
 	if err := c.BodyParser(&auth); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
 			Message: fmt.Sprintf("Error parsing request body: %v", err),
+		})
+	}
+
+	validate, ok := c.Locals("validator").(*validator.Validate)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.Response{
+			Message: "Validator not found!",
+		})
+	}
+
+	if err := validate.Struct(auth); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
+			Message: fmt.Sprintf("Validation error: %v", err),
 		})
 	}
 
