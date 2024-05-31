@@ -24,7 +24,7 @@ func UserCreate(c *fiber.Ctx) error {
 	var newUser models.UserRegister
 	if err := c.BodyParser(&newUser); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.Response{
-			Message: err.Error(),
+			Message: fmt.Sprintf("Error parsing request body: %v", err),
 		})
 	}
 
