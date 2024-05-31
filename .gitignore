@@ -1,7 +1,9 @@
 #* DIRECTORIES
 tmp
+vendor
 
 #* FILES
 .env
 .env.*
 !.env.example
+*.tar

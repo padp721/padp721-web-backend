@@ -5,9 +5,12 @@ import (
 	"github.com/padp721/padp721-web-backend/handlers"
 )
 
-func SetupSocialRoutes(api fiber.Router) {
-	socialRoutes := api.Group("/social")
+func SetupSocialRoutes(parentRoute fiber.Router) {
+	socialRoutes := parentRoute.Group("/social")
 
-	socialRoutes.Get("/", handlers.GetSocials)
-	socialRoutes.Post("/", handlers.CreateSocial)
+	socialRoutes.Get("/", handlers.SocialsGet)
+	socialRoutes.Get("/:id", handlers.SocialGet)
+	socialRoutes.Post("/", handlers.SocialCreate)
+	socialRoutes.Put("/:id", handlers.SocialUpdate)
+	socialRoutes.Delete("/:id", handlers.SocialDelete)
 }

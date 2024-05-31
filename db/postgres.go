@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Connect() *pgxpool.Pool {
+func CreatePool() (*pgxpool.Pool, error) {
 	connString := fmt.Sprintf(
 		"user=%v password=%v host=%v port=%v dbname=%v pool_max_conns=5",
 		os.Getenv("DB_USER"),
@@ -21,21 +21,21 @@ func Connect() *pgxpool.Pool {
 
 	config, err := pgxpool.ParseConfig(connString)
 	if err != nil {
-		log.Fatalf("Error parsing database config: %v", err)
+		return nil, err
 	}
 
 	dbPool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
-		log.Fatalf("Error connecting to database: %v", err)
+		return nil, err
 	}
 
 	var pgVersion string
 	sql := "SELECT version();"
 	err = dbPool.QueryRow(context.Background(), sql).Scan(&pgVersion)
 	if err != nil {
-		log.Fatal(err.Error())
+		return nil, err
 	}
 	log.Println(pgVersion)
 
-	return dbPool
+	return dbPool, nil
 }
