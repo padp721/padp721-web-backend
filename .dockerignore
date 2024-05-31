@@ -1,0 +1,13 @@
+#* DIRECTORIES
+tmp
+vendor
+scripts
+
+#* FILES
+**/.env
+**/.env.*
+**/.dockerignore
+**/.gitignore
+**/Dockrfile
+**/.air.toml
+**/.tar
