@@ -1,0 +1,8 @@
+#!/bin/bash
+
+version="1.0.0"
+image_name="padp721-web-backend"
+
+sudo docker build --no-cache -t padp721/${image_name}:${version} . && \
+sudo docker save -o ./docker/${image_name}-${version}.tar padp721/${image_name}:${version}
+sudo chown $USER:$USER ./docker/${image_name}-${version}.tar

@@ -3,6 +3,7 @@ tmp
 vendor
 
 #* FILES
+.air.toml
 .env
 .env.*
 !.env.example
